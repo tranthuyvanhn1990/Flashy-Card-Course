@@ -1,0 +1,39 @@
+---
+description: Clerk handles auth; every data path must scope to the signed-in user
+alwaysApply: true
+---
+
+# Clerk auth and user data isolation
+
+- **Authentication** is handled only by [Clerk](https://clerk.com/) (`@clerk/nextjs`: middleware, `ClerkProvider`, sign-in UI). Do not build parallel session systems or trust ad-hoc tokens for app authorization.
+
+- **Authorization**: Users must only read or mutate rows that belong to them. Treat any ID from the client (URL params, body, headers) as an untrusted *selector*—never as proof of ownership.
+
+## Server-side identity
+
+- Resolve the actor with Clerk on the server (e.g. `auth()` from `@clerk/nextjs/server`). If there is no authenticated user, do not run owner-scoped queries; return **401** / redirect to sign-in as appropriate.
+
+- Compare ownership using Clerk’s **`userId`** (e.g. `user_...`) against the database. In this project, **`decks.clerkUserId`** stores that value (see `src/db/schema.ts`).
+
+## Queries (Drizzle)
+
+- **Top-level resources** (e.g. decks): every `select` / `update` / `delete` must include `eq(decks.clerkUserId, userId)` (and the same for inserts—set `clerkUserId` from the session, not from the client).
+
+- **Nested resources** (e.g. cards under a deck): ensure the parent deck belongs to the user before touching the child—e.g. join or subquery on `decks` with `eq(decks.clerkUserId, userId)`, or fetch the deck by `id` **and** `clerkUserId` first; if no row, return **404** (not 403 leaking existence) unless the product explicitly distinguishes them.
+
+```typescript
+// ❌ BAD — any signed-in user can pass any deck id
+await db.select().from(decks).where(eq(decks.id, deckIdFromClient));
+
+// ✅ GOOD — deck must belong to this user
+await db
+  .select()
+  .from(decks)
+  .where(and(eq(decks.id, deckIdFromClient), eq(decks.clerkUserId, userId)));
+```
+
+- Do not expose other users’ primary keys or content through APIs, Server Actions, or Route Handlers. **List endpoints** must filter by `clerkUserId` (or equivalent) by default.
+
+## Client components
+
+- Client UI may show or hide navigation, but **enforcement lives on the server**. Never rely on hiding links or “secret” UUIDs as security.

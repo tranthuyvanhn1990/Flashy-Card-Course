@@ -1,0 +1,39 @@
+---
+description: Server Components for reads; Server Actions + Zod for writes and validation
+alwaysApply: true
+---
+
+# Next.js data: Server Components, Server Actions, Zod
+
+## Reads (database-backed data)
+
+- **Fetch and load data in Server Components** (async components, `await` in RSC). Pass results as props to Client Components when interactivity is needed.
+- Do not use Client Components with `useEffect` + `fetch` (or similar) as the primary path for loading entity data that belongs in the database layer.
+
+## Writes (insert / update / delete)
+
+- **All mutations** against the database must run in **Server Actions** (`"use server"`), not from client-side direct DB calls or ad-hoc API routes used only to bypass actions.
+- Keep ownership checks and Drizzle usage inside the action (see `clerk-auth-data-isolation.mdc` and `drizzle-database.mdc`).
+
+## Validation
+
+- **Every** payload that reaches a Server Action must be validated with **Zod** (e.g. `SomeSchema.parse()` or `.safeParse()`).
+- Define a **TypeScript type** for that payload: prefer `z.infer<typeof SomeSchema>` (or an explicit type that matches the schema). **Do not** type the action’s argument as `FormData` (or rely on `FormData` as the only type). If the UI submits a form, parse `FormData` inside the action into a plain object, then validate with Zod and work with the inferred type.
+
+```typescript
+// ✅ GOOD — schema + inferred type, validate before DB
+const updateDeckSchema = z.object({ id: z.string().uuid(), title: z.string().min(1) });
+type UpdateDeckInput = z.infer<typeof updateDeckSchema>;
+
+export async function updateDeck(input: UpdateDeckInput) {
+  "use server";
+  const data = updateDeckSchema.parse(input);
+  // ... db.update using data
+}
+
+// ❌ BAD — no Zod, FormData as the public contract
+export async function updateDeck(formData: FormData) {
+  "use server";
+  const title = formData.get("title") as string;
+}
+```

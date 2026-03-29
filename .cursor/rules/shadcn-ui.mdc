@@ -1,0 +1,30 @@
+---
+alwaysApply: true
+---
+# shadcn/ui
+
+- Build **all** UI with [shadcn/ui](https://ui.shadcn.com/) components. Prefer adding official components over one-off custom primitives (buttons, inputs, dialogs, etc.).
+- Import from `@/components/ui/...` and follow existing patterns in `components.json` (style, aliases).
+
+## Initialize (if missing)
+
+If `components.json` is absent or shadcn is not set up, initialize from the **app package** directory:
+
+```bash
+npx shadcn@latest init -t [framework]
+```
+
+Replace `[framework]` with the stack (e.g. `next` for this Next.js app). Use flags like `-d -y` for defaults when appropriate.
+
+## Add components
+
+If a component is not in the project yet, add it with the CLI:
+
+```bash
+npx shadcn@latest add card -c apps/web
+```
+
+- Replace `card` with the component name (`button`, `dialog`, `input`, …).
+- **`-c <path>`** targets the package root in a **monorepo** (example: `apps/web`). **This repo is a single Next.js app at the workspace root**—run `npx shadcn@latest add <component>` **without** `-c` from the project root unless the UI app lives in a subdirectory.
+
+After adding, use the generated files under `src/components/ui/` (or the path configured in `components.json`).
