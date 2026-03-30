@@ -137,3 +137,20 @@
     font-family: var(--font-poppins);
   }
 }
+
+@layer components {
+  /* Clerk SignInButton/SignUpButton are rendered as direct <button> children of <header/>. */
+  header > button:not([type]) {
+    @apply inline-flex h-7 items-center justify-center rounded-lg border px-2.5 text-[0.8rem] font-medium transition-all;
+  }
+
+  /* Sign in = outline */
+  header > button:not([type]):first-child {
+    @apply border-border bg-background hover:bg-muted hover:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50;
+  }
+
+  /* Sign up = default */
+  header > button:not([type]):last-child {
+    @apply border-transparent bg-primary text-primary-foreground hover:bg-primary/80;
+  }
+}

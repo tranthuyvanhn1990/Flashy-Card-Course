@@ -1,0 +1,110 @@
+"use server";
+
+import { auth } from "@clerk/nextjs/server";
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { z } from "zod";
+
+import { addCardToDeckForClerkUser } from "@/db/queries/cards";
+import { updateDeckForClerkUser } from "@/db/queries/decks";
+
+const addCardSchema = z.object({
+  deckId: z.string().uuid(),
+  front: z.string().min(1).max(5000),
+  back: z.string().min(1).max(5000),
+});
+
+export type AddCardInput = z.infer<typeof addCardSchema>;
+
+export async function addCardAction(input: AddCardInput) {
+  const { userId } = await auth();
+  if (!userId) redirect("/");
+
+  const parsed = addCardSchema.parse(input);
+
+  const inserted = await addCardToDeckForClerkUser({
+    clerkUserId: userId,
+    deckId: parsed.deckId,
+    front: parsed.front,
+    back: parsed.back,
+  });
+
+  if (!inserted) {
+    return { ok: false, error: "Deck not found" as const };
+  }
+
+  revalidatePath(`/desks/${parsed.deckId}`);
+
+  return { ok: true as const };
+}
+
+const updateDeckSchema = z.object({
+  deckId: z.string().uuid(),
+  title: z.string().min(1).max(512),
+  description: z.string().max(5000).nullable(),
+});
+
+export type UpdateDeckInput = z.infer<typeof updateDeckSchema>;
+
+export async function updateDeckAction(input: UpdateDeckInput) {
+  const { userId } = await auth();
+  if (!userId) redirect("/");
+
+  const parsed = updateDeckSchema.parse(input);
+
+  const updated = await updateDeckForClerkUser({
+    clerkUserId: userId,
+    deckId: parsed.deckId,
+    title: parsed.title,
+    description: parsed.description,
+  });
+
+  if (!updated) {
+    return { ok: false, error: "Deck not found" as const };
+  }
+
+  revalidatePath(`/desks/${parsed.deckId}`);
+  revalidatePath("/dashboard");
+
+  return { ok: true as const };
+}
+
+export async function updateDeckFromFormAction(formData: FormData) {
+  const { userId } = await auth();
+  if (!userId) redirect("/");
+
+  const rawDeckId = formData.get("deckId");
+  const rawTitle = formData.get("title");
+  const rawDescription = formData.get("description");
+
+  if (typeof rawDeckId !== "string" || typeof rawTitle !== "string") {
+    redirect("/dashboard");
+  }
+
+  const description =
+    typeof rawDescription === "string" && rawDescription.trim() !== ""
+      ? rawDescription
+      : null;
+
+  const parsed = updateDeckSchema.parse({
+    deckId: rawDeckId,
+    title: rawTitle,
+    description,
+  });
+
+  const updated = await updateDeckForClerkUser({
+    clerkUserId: userId,
+    deckId: parsed.deckId,
+    title: parsed.title,
+    description: parsed.description,
+  });
+
+  if (!updated) {
+    redirect("/dashboard");
+  }
+
+  revalidatePath(`/desks/${parsed.deckId}`);
+  revalidatePath("/dashboard");
+  redirect(`/desks/${parsed.deckId}`);
+}
+

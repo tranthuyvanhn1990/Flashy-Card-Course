@@ -1,8 +1,6 @@
 ---
-description: Clerk handles auth; every data path must scope to the signed-in user
 alwaysApply: true
 ---
-
 # Clerk auth and user data isolation
 
 - **Authentication** is handled only by [Clerk](https://clerk.com/) (`@clerk/nextjs`: middleware, `ClerkProvider`, sign-in UI). Do not build parallel session systems or trust ad-hoc tokens for app authorization.
@@ -11,7 +9,7 @@ alwaysApply: true
 
 ## Server-side identity
 
-- Resolve the actor with Clerk on the server (e.g. `auth()` from `@clerk/nextjs/server`). If there is no authenticated user, do not run owner-scoped queries; return **401** / redirect to sign-in as appropriate.
+- Resolve the actor with Clerk on the server (e.g. `auth()` from `@clerk/nextjs/server`). If there is no authenticated user, do not run owner-scoped queries; return **401** / redirect to the homepage (`/`) where the sign-in/sign-up buttons live as appropriate.
 
 - Compare ownership using Clerk’s **`userId`** (e.g. `user_...`) against the database. In this project, **`decks.clerkUserId`** stores that value (see `src/db/schema.ts`).
 

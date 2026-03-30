@@ -22,7 +22,12 @@ export default async function Home() {
       </div>
       <Show when="signed-out">
         <div className="flex flex-wrap items-center justify-center gap-3">
-          <AuthHeaderButtons size="default" />
+          <AuthHeaderButtons />
+        </div>
+      </Show>
+      <Show when="signed-in">
+        <div className="text-center text-sm text-muted-foreground">
+          Redirecting to your dashboard...
         </div>
       </Show>
     </div>

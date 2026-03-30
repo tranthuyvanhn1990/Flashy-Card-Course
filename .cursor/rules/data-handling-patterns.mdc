@@ -1,0 +1,58 @@
+---
+alwaysApply: true
+---
+# Drizzle ORM only (via query helpers)
+
+All database access must go through **Drizzle** using this project’s schema and client, and must be centralized in `src/db/queries/`.
+
+## Centralized query helpers
+
+- Create query/helper modules under `src/db/queries/` (e.g. `src/db/queries/decks.ts`, `src/db/queries/cards.ts`).
+- All data fetching and mutations must be performed by calling exported helper functions from `src/db/queries/*`.
+- Feature code (Server Components, Route Handlers, Server Actions) must not call `db.select()`, `db.insert()`, `db.update()`, `db.delete()`, or `db.execute()` directly. Instead, import and call the relevant `@/db/queries/*` helpers.
+- Query helpers may use `db` from `src/db/index.ts`, Drizzle’s query builder, and schema table/relation symbols.
+- If raw SQL is required, keep it inside `src/db/queries/*` (e.g. via `db.execute(sql\`...\`)`) and still reference schema-defined table/column names for consistency.
+
+## Schema
+
+- Define and extend tables in `src/db/schema.ts` using `drizzle-orm/pg-core` (`pgTable`, columns, `relations`, indexes).
+- Import table/relation symbols from `@/db/schema` (or the project’s `@/` alias to `src/db/schema`) — do not duplicate column names or table shapes in ad-hoc types for DB rows.
+
+## Queries (inside `src/db/queries/*`)
+
+- Use the shared client from `src/db/index.ts` (`db`) with Drizzle’s query builder: `db.select()`, `db.insert()`, `db.update()`, `db.delete()`, `db.query.*` if configured, and `sql` from `drizzle-orm` when raw fragments are needed.
+- Prefer relational queries (`with`) / Drizzle helpers over string-built SQL for app logic.
+
+## Do not
+
+- Call `neon()` or other drivers directly from feature code for reads/writes (keep driver usage centralized in `src/db/index.ts`).
+- Use another ORM, ad-hoc `client.query('SELECT ...')` for entity access, or handwritten SQL as the primary data layer when Drizzle can express the operation.
+- Call `db.*` (or `sql` via `db.execute`) outside `src/db/queries/*` for data fetching or mutations.
+
+## Example
+
+```typescript
+// ✅ GOOD — query helper in `src/db/queries/*`
+// src/db/queries/decks.ts
+import { db } from "@/db";
+import { decks } from "@/db/schema";
+import { and, eq } from "drizzle-orm";
+
+export async function getDeckByIdForUser(deckId: string, clerkUserId: string) {
+  return db
+    .select()
+    .from(decks)
+    .where(and(eq(decks.id, deckId), eq(decks.clerkUserId, clerkUserId)))
+    .limit(1);
+}
+
+// ✅ GOOD — feature code calls the helper (no direct `db.*`)
+// src/app/some-route-or-server-action.ts
+import { getDeckByIdForUser } from "@/db/queries/decks";
+
+const deck = await getDeckByIdForUser(input.deckId, userId);
+
+// ❌ BAD — bypassing the query helper layer
+// feature code directly running Drizzle queries
+// await db.select().from(decks).where(eq(decks.id, deckId));
+```

@@ -1,9 +1,15 @@
 import type { Metadata } from "next";
-import { ClerkProvider, Show, UserButton } from "@clerk/nextjs";
+import {
+  ClerkProvider,
+  Show,
+  SignInButton,
+  SignUpButton,
+  UserButton,
+} from "@clerk/nextjs";
 import { dark } from "@clerk/ui/themes";
 import { Poppins } from "next/font/google";
-
-import { AuthHeaderButtons } from "@/components/auth-header-buttons";
+// Note: This file is a Server Component, so we avoid calling client-only utilities (e.g. buttonVariants()).
+// We inline the required button classes instead.
 
 import "./globals.css";
 
@@ -40,7 +46,12 @@ export default function RootLayout({
         <ClerkProvider appearance={{ theme: dark }}>
           <header className="flex items-center justify-end gap-2 border-b border-border px-4 py-3">
             <Show when="signed-out">
-              <AuthHeaderButtons />
+              <SignInButton mode="modal" forceRedirectUrl="/dashboard">
+                Sign in
+              </SignInButton>
+              <SignUpButton mode="modal" forceRedirectUrl="/dashboard">
+                Sign up
+              </SignUpButton>
             </Show>
             <Show when="signed-in">
               <UserButton />

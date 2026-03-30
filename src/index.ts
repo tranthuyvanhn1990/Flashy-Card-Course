@@ -1,5 +1,10 @@
 import { config } from "dotenv";
 import { resolve } from "node:path";
+import {
+  createDeckForUser,
+  getDeckByClerkUserIdAndTitle,
+} from "@/db/queries/decks";
+import { createCardsForDeck } from "@/db/queries/cards";
 
 config({ path: resolve(process.cwd(), ".env.local") });
 config({ path: resolve(process.cwd(), ".env") });
@@ -91,31 +96,15 @@ const britishHistoryCards: { front: string; back: string }[] = [
 ];
 
 async function main() {
-  const { db } = await import("./db");
-  const { and, eq } = await import("drizzle-orm");
-  const { cards, decks } = await import("./db/schema");
+  const existingViet = await getDeckByClerkUserIdAndTitle(
+    CLERK_USER_ID,
+    VIET_DECK_TITLE,
+  );
 
-  const [existingViet] = await db
-    .select()
-    .from(decks)
-    .where(
-      and(
-        eq(decks.clerkUserId, CLERK_USER_ID),
-        eq(decks.title, VIET_DECK_TITLE),
-      ),
-    )
-    .limit(1);
-
-  const [existingHistory] = await db
-    .select()
-    .from(decks)
-    .where(
-      and(
-        eq(decks.clerkUserId, CLERK_USER_ID),
-        eq(decks.title, HISTORY_DECK_TITLE),
-      ),
-    )
-    .limit(1);
+  const existingHistory = await getDeckByClerkUserIdAndTitle(
+    CLERK_USER_ID,
+    HISTORY_DECK_TITLE,
+  );
 
   if (existingViet && existingHistory) {
     console.log(
@@ -126,45 +115,25 @@ async function main() {
 
   let vietDeckId = existingViet?.id;
   if (!vietDeckId) {
-    const [vietDeck] = await db
-      .insert(decks)
-      .values({
-        clerkUserId: CLERK_USER_ID,
-        title: VIET_DECK_TITLE,
-        description: "Common English words with Vietnamese translations.",
-      })
-      .returning();
+    const vietDeck = await createDeckForUser({
+      clerkUserId: CLERK_USER_ID,
+      title: VIET_DECK_TITLE,
+      description: "Common English words with Vietnamese translations.",
+    });
     vietDeckId = vietDeck.id;
-    await db.insert(cards).values(
-      vietnameseCards.map((c, i) => ({
-        deckId: vietDeckId!,
-        front: c.front,
-        back: c.back,
-        sortOrder: i,
-      })),
-    );
+    await createCardsForDeck(vietDeckId, vietnameseCards);
     console.log(`Inserted deck "${VIET_DECK_TITLE}" with ${vietnameseCards.length} cards.`);
   }
 
   let historyDeckId = existingHistory?.id;
   if (!historyDeckId) {
-    const [historyDeck] = await db
-      .insert(decks)
-      .values({
-        clerkUserId: CLERK_USER_ID,
-        title: HISTORY_DECK_TITLE,
-        description: "British history questions and concise answers.",
-      })
-      .returning();
+    const historyDeck = await createDeckForUser({
+      clerkUserId: CLERK_USER_ID,
+      title: HISTORY_DECK_TITLE,
+      description: "British history questions and concise answers.",
+    });
     historyDeckId = historyDeck.id;
-    await db.insert(cards).values(
-      britishHistoryCards.map((c, i) => ({
-        deckId: historyDeckId!,
-        front: c.front,
-        back: c.back,
-        sortOrder: i,
-      })),
-    );
+    await createCardsForDeck(historyDeckId, britishHistoryCards);
     console.log(
       `Inserted deck "${HISTORY_DECK_TITLE}" with ${britishHistoryCards.length} cards.`,
     );
