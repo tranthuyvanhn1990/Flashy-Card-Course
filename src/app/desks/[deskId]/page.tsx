@@ -7,6 +7,8 @@ import { z } from "zod";
 import { getDeckByIdForClerkUserId } from "@/db/queries/decks";
 import { getCardsByDeckId } from "@/db/queries/cards";
 import { AddCardModal } from "./add-card-modal";
+import { EditCardModal } from "./edit-card-modal";
+import { DeleteCardButton } from "./delete-card-button";
 import {
   Card,
   CardContent,
@@ -76,8 +78,7 @@ export default async function DeskPage({
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <AddCardModal deckId={deck.id} />
+          <div className="flex shrink-0 items-center gap-2">
             <EditDeskModal
               deckId={deck.id}
               initialTitle={deck.title}
@@ -87,36 +88,55 @@ export default async function DeskPage({
         </div>
       </div>
 
-      {deckCards.length === 0 ? (
-        <div className="mx-auto w-full max-w-md">
-          <Card>
-            <CardHeader className="items-center text-center">
-              <CardTitle className="text-xl">No cards yet</CardTitle>
-              <CardDescription>
-                Add cards to this deck in the database to see them here.
-              </CardDescription>
-            </CardHeader>
-          </Card>
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-xl font-semibold tracking-tight">Cards</h2>
+          <AddCardModal deckId={deck.id} />
         </div>
-      ) : (
-        <ul className="mx-auto grid w-full max-w-3xl list-none gap-4 sm:grid-cols-2">
-          {deckCards.map((card) => (
-            <li key={card.id} className="h-full">
-              <Card className="h-full">
-                <CardContent className="flex flex-col gap-4">
-                  <div className="rounded-lg bg-muted/30 p-3">
-                    <p className="text-sm font-medium">{card.front}</p>
-                  </div>
-                  <div className="rounded-lg bg-muted/30 p-3">
-                    <p className="text-xs text-muted-foreground">Back</p>
-                    <p className="text-sm font-medium">{card.back}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </li>
-          ))}
-        </ul>
-      )}
+
+        {deckCards.length === 0 ? (
+          <div className="mx-auto w-full max-w-md">
+            <Card>
+              <CardHeader className="items-center text-center">
+                <CardTitle className="text-xl">No cards yet</CardTitle>
+                <CardDescription>
+                  Add cards to this deck in the database to see them here.
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          </div>
+        ) : (
+          <ul className="grid list-none gap-4 sm:grid-cols-2">
+            {deckCards.map((card) => (
+              <li key={card.id} className="h-full">
+                <Card className="h-full">
+                  <CardContent className="flex flex-col gap-4">
+                    <div className="rounded-lg bg-muted/30 p-3">
+                    <p className="text-xs text-muted-foreground">Front</p>
+                      <p className="text-sm font-medium">{card.front}</p>
+                    </div>
+                    <div className="rounded-lg bg-muted/30 p-3">
+                      <p className="text-xs text-muted-foreground">Back</p>
+                      <p className="text-sm font-medium">{card.back}</p>
+                    </div>
+                    <div className="flex justify-end gap-2">
+                    <DeleteCardButton
+                        cardId={card.id}
+                        cardFrontPreview={card.front}
+                      />
+                      <EditCardModal
+                        cardId={card.id}
+                        initialFront={card.front}
+                        initialBack={card.back}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }

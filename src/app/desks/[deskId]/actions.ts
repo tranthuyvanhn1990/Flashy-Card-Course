@@ -5,7 +5,11 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import { addCardToDeckForClerkUser } from "@/db/queries/cards";
+import {
+  addCardToDeckForClerkUser,
+  deleteCardForClerkUser,
+  updateCardForClerkUser,
+} from "@/db/queries/cards";
 import { updateDeckForClerkUser } from "@/db/queries/decks";
 
 const addCardSchema = z.object({
@@ -34,6 +38,62 @@ export async function addCardAction(input: AddCardInput) {
   }
 
   revalidatePath(`/desks/${parsed.deckId}`);
+
+  return { ok: true as const };
+}
+
+const updateCardSchema = z.object({
+  cardId: z.string().uuid(),
+  front: z.string().min(1).max(5000),
+  back: z.string().min(1).max(5000),
+});
+
+export type UpdateCardInput = z.infer<typeof updateCardSchema>;
+
+export async function updateCardAction(input: UpdateCardInput) {
+  const { userId } = await auth();
+  if (!userId) redirect("/");
+
+  const parsed = updateCardSchema.parse(input);
+
+  const updated = await updateCardForClerkUser({
+    clerkUserId: userId,
+    cardId: parsed.cardId,
+    front: parsed.front,
+    back: parsed.back,
+  });
+
+  if (!updated) {
+    return { ok: false, error: "Card not found" as const };
+  }
+
+  revalidatePath(`/desks/${updated.deckId}`);
+
+  return { ok: true as const };
+}
+
+const deleteCardSchema = z.object({
+  cardId: z.string().uuid(),
+});
+
+export type DeleteCardInput = z.infer<typeof deleteCardSchema>;
+
+export async function deleteCardAction(input: DeleteCardInput) {
+  const { userId } = await auth();
+  if (!userId) redirect("/");
+
+  const parsed = deleteCardSchema.parse(input);
+
+  const deleted = await deleteCardForClerkUser({
+    clerkUserId: userId,
+    cardId: parsed.cardId,
+  });
+
+  if (!deleted) {
+    return { ok: false, error: "Card not found" as const };
+  }
+
+  revalidatePath(`/desks/${deleted.deckId}`);
 
   return { ok: true as const };
 }

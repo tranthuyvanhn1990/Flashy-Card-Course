@@ -1,6 +1,6 @@
-import { asc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { cards } from "@/db/schema";
+import { cards, decks } from "@/db/schema";
 import type { InferSelectModel } from "drizzle-orm";
 import { getDeckByIdForClerkUserId } from "@/db/queries/decks";
 
@@ -27,7 +27,7 @@ export async function getCardsByDeckId(deckId: string): Promise<Card[]> {
     .select()
     .from(cards)
     .where(eq(cards.deckId, deckId))
-    .orderBy(asc(cards.sortOrder));
+    .orderBy(desc(cards.updatedAt), desc(cards.createdAt));
 }
 
 export async function addCardToDeckForClerkUser(params: {
@@ -63,3 +63,53 @@ export async function addCardToDeckForClerkUser(params: {
   return inserted ?? null;
 }
 
+export async function updateCardForClerkUser(params: {
+  clerkUserId: string;
+  cardId: string;
+  front: string;
+  back: string;
+}): Promise<{ deckId: string } | null> {
+  const [owned] = await db
+    .select({ deckId: cards.deckId })
+    .from(cards)
+    .innerJoin(decks, eq(cards.deckId, decks.id))
+    .where(
+      and(
+        eq(cards.id, params.cardId),
+        eq(decks.clerkUserId, params.clerkUserId),
+      ),
+    )
+    .limit(1);
+
+  if (!owned) return null;
+
+  await db
+    .update(cards)
+    .set({ front: params.front, back: params.back })
+    .where(eq(cards.id, params.cardId));
+
+  return { deckId: owned.deckId };
+}
+
+export async function deleteCardForClerkUser(params: {
+  clerkUserId: string;
+  cardId: string;
+}): Promise<{ deckId: string } | null> {
+  const [owned] = await db
+    .select({ deckId: cards.deckId })
+    .from(cards)
+    .innerJoin(decks, eq(cards.deckId, decks.id))
+    .where(
+      and(
+        eq(cards.id, params.cardId),
+        eq(decks.clerkUserId, params.clerkUserId),
+      ),
+    )
+    .limit(1);
+
+  if (!owned) return null;
+
+  await db.delete(cards).where(eq(cards.id, params.cardId));
+
+  return { deckId: owned.deckId };
+}

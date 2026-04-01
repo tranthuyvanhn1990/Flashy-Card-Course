@@ -16,82 +16,99 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
-import { toast } from "sonner";
+import { updateCardAction, type UpdateCardInput } from "./actions";
 
-import { addCardAction, type AddCardInput } from "./actions";
-
-export function AddCardModal({ deckId }: { deckId: string }) {
+export function EditCardModal({
+  cardId,
+  initialFront,
+  initialBack,
+}: {
+  cardId: string;
+  initialFront: string;
+  initialBack: string;
+}) {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
-  const [front, setFront] = React.useState("");
-  const [back, setBack] = React.useState("");
+  const [front, setFront] = React.useState(initialFront);
+  const [back, setBack] = React.useState(initialBack);
   const [error, setError] = React.useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  React.useEffect(() => {
+    if (!open) return;
+    setFront(initialFront);
+    setBack(initialBack);
+    setError(null);
+  }, [open, initialFront, initialBack]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
-    const input: AddCardInput = {
-      deckId,
-      front,
-      back,
+    const input: UpdateCardInput = {
+      cardId,
+      front: front.trim(),
+      back: back.trim(),
     };
 
     startTransition(async () => {
-      const result = await addCardAction(input);
+      const result = await updateCardAction(input);
 
       if (!result.ok) {
-        setError(result.error ?? "Failed to add card");
+        setError(result.error ?? "Failed to update card");
         return;
       }
 
       setOpen(false);
-      setFront("");
-      setBack("");
-      toast.success("Card added");
       router.refresh();
     });
   }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <Button variant="secondary" onClick={() => setOpen(true)}>
-        Add card
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => setOpen(true)}
+      >
+        Edit card
       </Button>
 
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Add card</DialogTitle>
+          <DialogTitle>Edit card</DialogTitle>
           <DialogDescription>
-            Add a new flashcard to this deck.
+            Update the front and back of this flashcard.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={onSubmit} className="grid gap-4">
           <div className="grid gap-2">
-            <label className="text-sm font-medium" htmlFor="front">
+            <label className="text-sm font-medium" htmlFor={`edit-front-${cardId}`}>
               Front
             </label>
             <Input
-              id="front"
+              id={`edit-front-${cardId}`}
               value={front}
               onChange={(e) => setFront(e.target.value)}
               disabled={isPending}
               required
+              maxLength={5000}
             />
           </div>
 
           <div className="grid gap-2">
-            <label className="text-sm font-medium" htmlFor="back">
+            <label className="text-sm font-medium" htmlFor={`edit-back-${cardId}`}>
               Back
             </label>
             <Textarea
-              id="back"
+              id={`edit-back-${cardId}`}
               value={back}
               onChange={(e) => setBack(e.target.value)}
               disabled={isPending}
               required
+              maxLength={5000}
             />
           </div>
 
@@ -103,7 +120,7 @@ export function AddCardModal({ deckId }: { deckId: string }) {
 
           <DialogFooter>
             <Button type="submit" disabled={isPending}>
-              {isPending ? "Adding..." : "Add"}
+              {isPending ? "Saving..." : "Save"}
             </Button>
           </DialogFooter>
         </form>
@@ -111,4 +128,3 @@ export function AddCardModal({ deckId }: { deckId: string }) {
     </Dialog>
   );
 }
-

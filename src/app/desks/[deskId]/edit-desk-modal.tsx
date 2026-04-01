@@ -68,12 +68,12 @@ export function EditDeskModal({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <Button variant="secondary" onClick={() => setOpen(true)}>
-        Edit deck
+        Edit desk
       </Button>
 
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Edit deck</DialogTitle>
+          <DialogTitle>Edit desk</DialogTitle>
           <DialogDescription>
             Update the title and description for this desk.
           </DialogDescription>
