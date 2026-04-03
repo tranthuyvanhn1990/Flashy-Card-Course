@@ -1,6 +1,6 @@
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { decks } from "@/db/schema";
+import { cards, decks } from "@/db/schema";
 import type { InferSelectModel } from "drizzle-orm";
 
 export type Deck = InferSelectModel<typeof decks>;
@@ -79,5 +79,31 @@ export async function updateDeckForClerkUser(params: {
     .returning();
 
   return updated ?? null;
+}
+
+export async function deleteDeckForClerkUser(params: {
+  clerkUserId: string;
+  deckId: string;
+}): Promise<{ id: string } | null> {
+  const [owned] = await db
+    .select({ id: decks.id })
+    .from(decks)
+    .where(
+      and(eq(decks.clerkUserId, params.clerkUserId), eq(decks.id, params.deckId)),
+    )
+    .limit(1);
+
+  if (!owned) return null;
+
+  await db.delete(cards).where(eq(cards.deckId, owned.id));
+
+  const [deleted] = await db
+    .delete(decks)
+    .where(
+      and(eq(decks.clerkUserId, params.clerkUserId), eq(decks.id, params.deckId)),
+    )
+    .returning({ id: decks.id });
+
+  return deleted ?? null;
 }
 

@@ -17,6 +17,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { EditDeskModal } from "./edit-desk-modal";
+import { DeleteDeskModal } from "./delete-desk-modal";
+import { DeskStudyButton } from "./desk-study-button";
 
 const deskIdSchema = z.string().uuid();
 
@@ -38,7 +40,7 @@ export default async function DeskPage({
   params: Promise<{ deskId: string }>;
 }) {
   const { userId } = await auth();
-  if (!userId) redirect("/");
+  if (!userId) redirect("/sign-in");
 
   const { deskId } = await params;
   const parsedDeskId = deskIdSchema.safeParse(deskId);
@@ -78,17 +80,20 @@ export default async function DeskPage({
             </div>
           </div>
 
-          <div className="flex shrink-0 items-center gap-2">
-            <Link
-              href={`/desks/${deck.id}/study`}
-              className="inline-flex h-8 items-center justify-center rounded-lg border border-border bg-background px-2.5 text-sm font-medium whitespace-nowrap transition-all hover:bg-muted hover:text-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-            >
-              Study
-            </Link>
+          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+            <DeskStudyButton
+              deskId={deck.id}
+              hasCards={deckCards.length > 0}
+            />
             <EditDeskModal
               deckId={deck.id}
               initialTitle={deck.title}
               initialDescription={deck.description ?? ""}
+            />
+            <DeleteDeskModal
+              deckId={deck.id}
+              deckTitle={deck.title}
+              cardCount={deckCards.length}
             />
           </div>
         </div>
@@ -97,7 +102,7 @@ export default async function DeskPage({
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-xl font-semibold tracking-tight">Cards</h2>
-          <AddCardModal deckId={deck.id} />
+          {deckCards.length > 0 ? <AddCardModal deckId={deck.id} /> : null}
         </div>
 
         {deckCards.length === 0 ? (
@@ -106,9 +111,16 @@ export default async function DeskPage({
               <CardHeader className="items-center text-center">
                 <CardTitle className="text-xl">No cards yet</CardTitle>
                 <CardDescription>
-                  Add cards to this deck in the database to see them here.
+                  Create your first flashcard to start studying this deck.
                 </CardDescription>
               </CardHeader>
+              <CardContent className="flex flex-col items-center gap-4 pb-8 pt-2">
+                <AddCardModal
+                  deckId={deck.id}
+                  triggerLabel="Add your first card"
+                  triggerVariant="default"
+                />
+              </CardContent>
             </Card>
           </div>
         ) : (

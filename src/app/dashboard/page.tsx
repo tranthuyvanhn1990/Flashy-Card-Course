@@ -11,6 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { getDecksByClerkUserId } from "@/db/queries/decks";
+import { CreateDeskDialog } from "@/app/dashboard/create-desk-dialog";
 
 function formatDeckUpdatedAt(date: Date) {
   return new Intl.DateTimeFormat(undefined, {
@@ -27,7 +28,7 @@ export const metadata: Metadata = {
 export default async function DashboardPage() {
   const { userId } = await auth();
   if (!userId) {
-    redirect("/");
+    redirect("/sign-in");
   }
 
   const userDecks = await getDecksByClerkUserId(userId);
@@ -35,12 +36,18 @@ export default async function DashboardPage() {
   return (
     <div className="flex flex-1 flex-col gap-8 bg-background px-4 py-8">
       <div className="mx-auto w-full max-w-3xl">
-        <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
-          Dashboard
-        </h1>
-        <p className="mt-2 text-muted-foreground">
-          Your flashcard decks for this account.
-        </p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
+              Dashboard
+            </h1>
+            <p className="mt-2 text-muted-foreground">
+              Your flashcard decks for this account.
+            </p>
+          </div>
+
+          <CreateDeskDialog />
+        </div>
       </div>
 
       {userDecks.length === 0 ? (

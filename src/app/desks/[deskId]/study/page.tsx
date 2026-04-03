@@ -15,7 +15,7 @@ export default async function DeskStudyPage({
   params: Promise<{ deskId: string }>;
 }) {
   const { userId } = await auth();
-  if (!userId) redirect("/");
+  if (!userId) redirect("/sign-in");
 
   const { deskId } = await params;
   const parsedDeskId = deskIdSchema.safeParse(deskId);
@@ -30,8 +30,11 @@ export default async function DeskStudyPage({
   return (
     <div className="flex flex-1 flex-col bg-background">
       <div className="mx-auto w-full max-w-3xl px-4 pt-8">
-        <Link href="/desks" className="text-sm text-muted-foreground hover:underline">
-          &larr; Back to desks
+        <Link
+          href={`/desks/${deck.id}`}
+          className="text-sm text-muted-foreground hover:underline"
+        >
+          &larr; Back to desk
         </Link>
       </div>
       <StudySession

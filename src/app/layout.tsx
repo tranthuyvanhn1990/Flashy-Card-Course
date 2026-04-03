@@ -14,6 +14,7 @@ import { Poppins } from "next/font/google";
 import "./globals.css";
 
 import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 const poppins = Poppins({
   variable: "--font-poppins",
@@ -46,6 +47,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
         <ClerkProvider appearance={{ theme: dark }}>
+          <TooltipProvider>
           <header className="flex items-center justify-end gap-2 border-b border-border px-4 py-3">
             <Show when="signed-out">
               <SignInButton mode="modal" forceRedirectUrl="/dashboard">
@@ -61,6 +63,7 @@ export default function RootLayout({
           </header>
           {children}
           <Toaster />
+          </TooltipProvider>
         </ClerkProvider>
       </body>
     </html>

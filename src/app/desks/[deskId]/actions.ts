@@ -10,7 +10,10 @@ import {
   deleteCardForClerkUser,
   updateCardForClerkUser,
 } from "@/db/queries/cards";
-import { updateDeckForClerkUser } from "@/db/queries/decks";
+import {
+  deleteDeckForClerkUser,
+  updateDeckForClerkUser,
+} from "@/db/queries/decks";
 
 const addCardSchema = z.object({
   deckId: z.string().uuid(),
@@ -22,7 +25,7 @@ export type AddCardInput = z.infer<typeof addCardSchema>;
 
 export async function addCardAction(input: AddCardInput) {
   const { userId } = await auth();
-  if (!userId) redirect("/");
+  if (!userId) redirect("/sign-in");
 
   const parsed = addCardSchema.parse(input);
 
@@ -52,7 +55,7 @@ export type UpdateCardInput = z.infer<typeof updateCardSchema>;
 
 export async function updateCardAction(input: UpdateCardInput) {
   const { userId } = await auth();
-  if (!userId) redirect("/");
+  if (!userId) redirect("/sign-in");
 
   const parsed = updateCardSchema.parse(input);
 
@@ -80,7 +83,7 @@ export type DeleteCardInput = z.infer<typeof deleteCardSchema>;
 
 export async function deleteCardAction(input: DeleteCardInput) {
   const { userId } = await auth();
-  if (!userId) redirect("/");
+  if (!userId) redirect("/sign-in");
 
   const parsed = deleteCardSchema.parse(input);
 
@@ -108,7 +111,7 @@ export type UpdateDeckInput = z.infer<typeof updateDeckSchema>;
 
 export async function updateDeckAction(input: UpdateDeckInput) {
   const { userId } = await auth();
-  if (!userId) redirect("/");
+  if (!userId) redirect("/sign-in");
 
   const parsed = updateDeckSchema.parse(input);
 
@@ -129,9 +132,36 @@ export async function updateDeckAction(input: UpdateDeckInput) {
   return { ok: true as const };
 }
 
+const deleteDeckSchema = z.object({
+  deckId: z.string().uuid(),
+});
+
+export type DeleteDeckInput = z.infer<typeof deleteDeckSchema>;
+
+export async function deleteDeckAction(input: DeleteDeckInput) {
+  const { userId } = await auth();
+  if (!userId) redirect("/sign-in");
+
+  const parsed = deleteDeckSchema.parse(input);
+
+  const deleted = await deleteDeckForClerkUser({
+    clerkUserId: userId,
+    deckId: parsed.deckId,
+  });
+
+  if (!deleted) {
+    return { ok: false, error: "Deck not found" as const };
+  }
+
+  revalidatePath("/dashboard");
+  revalidatePath(`/desks/${parsed.deckId}`);
+
+  return { ok: true as const };
+}
+
 export async function updateDeckFromFormAction(formData: FormData) {
   const { userId } = await auth();
-  if (!userId) redirect("/");
+  if (!userId) redirect("/sign-in");
 
   const rawDeckId = formData.get("deckId");
   const rawTitle = formData.get("title");
