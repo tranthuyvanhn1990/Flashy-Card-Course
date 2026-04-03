@@ -8,7 +8,7 @@ import { getDeckByIdForClerkUserId } from "@/db/queries/decks";
 import { getCardsByDeckId } from "@/db/queries/cards";
 import { AddCardModal } from "./add-card-modal";
 import { EditCardModal } from "./edit-card-modal";
-import { DeleteCardButton } from "./delete-card-button";
+import { DeleteCardModal } from "./delete-card-modal";
 import {
   Card,
   CardContent,
@@ -79,6 +79,12 @@ export default async function DeskPage({
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
+            <Link
+              href={`/desks/${deck.id}/study`}
+              className="inline-flex h-8 items-center justify-center rounded-lg border border-border bg-background px-2.5 text-sm font-medium whitespace-nowrap transition-all hover:bg-muted hover:text-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+            >
+              Study
+            </Link>
             <EditDeskModal
               deckId={deck.id}
               initialTitle={deck.title}
@@ -120,7 +126,7 @@ export default async function DeskPage({
                       <p className="text-sm font-medium">{card.back}</p>
                     </div>
                     <div className="flex justify-end gap-2">
-                    <DeleteCardButton
+                    <DeleteCardModal
                         cardId={card.id}
                         cardFrontPreview={card.front}
                       />

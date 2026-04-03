@@ -18,7 +18,7 @@ import {
 
 import { deleteCardAction, type DeleteCardInput } from "./actions";
 
-export function DeleteCardButton({
+export function DeleteCardModal({
   cardId,
   cardFrontPreview,
 }: {
