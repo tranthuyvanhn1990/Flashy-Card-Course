@@ -1,0 +1,102 @@
+---
+description: Clerk Billing (B2C) — plans, features, and gating in Next.js
+alwaysApply: true
+---
+
+# Clerk Billing
+
+Subscriptions and payments use **Clerk Billing** (B2C). Billing is beta; follow [Clerk pinning guidance](https://clerk.com/docs/pinning.md) for stable SDK/`clerk-js` versions.
+
+## Catalog (use these exact keys)
+
+**Plans**
+
+- `free_user`
+- `pro`
+
+**Features (entitlements)**
+
+- `3_desk_limit`
+- `unlimited_desks`
+- `ai_flashcard_generation`
+
+## Plan → feature mapping (authoritative)
+
+- **`free_user`**: `3_desk_limit` (does **not** include `unlimited_desks` or `ai_flashcard_generation`).
+- **`pro`**: `unlimited_desks`, `ai_flashcard_generation`.
+
+Mirror this mapping in the [Clerk Dashboard](https://dashboard.clerk.com/~/billing/plans) so `has({ feature: "..." })` matches product rules. Plans managed in Clerk do not sync with Stripe products; Stripe is used for payment processing only.
+
+## Non-negotiable key usage
+
+- Use these keys **exactly as-is** in code and Dashboard config (case-sensitive):
+  - plans: `free_user`, `pro`
+  - features: `3_desk_limit`, `unlimited_desks`, `ai_flashcard_generation`
+- Do not translate, rename, or alias plan/feature keys in checks.
+
+## Pricing UI
+
+Prefer a dedicated route that renders `<PricingTable />` from `@clerk/nextjs` (see [PricingTable docs](https://clerk.com/docs/nextjs/reference/components/billing/pricing-table.md)).
+
+```tsx
+import { PricingTable } from "@clerk/nextjs";
+
+export default function PricingPage() {
+  return (
+    <div style={{ maxWidth: "800px", margin: "0 auto", padding: "0 1rem" }}>
+      <PricingTable />
+    </div>
+  );
+}
+```
+
+## Gating access (recommended patterns)
+
+Use **Plan** or **Feature** checks—pick the smallest unit that matches the product rule (e.g. cap desks by feature, not by duplicating plan checks everywhere).
+
+### Server Components / Server Actions / Route Handlers
+
+Use `has()` from the Clerk auth object:
+
+```typescript
+import { auth } from "@clerk/nextjs/server";
+
+export default async function Example() {
+  const { has } = await auth();
+
+  const isPro = has({ plan: "pro" });
+  const canUseAi = has({ feature: "ai_flashcard_generation" });
+
+  if (!canUseAi) {
+    return <p>Upgrade to use AI flashcard generation.</p>;
+  }
+  // ...
+}
+```
+
+Reference: [`has()`](https://clerk.com/docs/reference/backend/types/auth-object.md#has), [auth object](https://clerk.com/docs/reference/backend/types/auth-object.md).
+
+### Client Components
+
+Use `<Show>` from `@clerk/nextjs` with `when={{ plan: "..." }}` or `when={{ feature: "..." }}` and a `fallback` when access is missing.
+
+```tsx
+import { Show } from "@clerk/nextjs";
+
+export default function ProtectedContent() {
+  return (
+    <Show
+      when={{ feature: "ai_flashcard_generation" }}
+      fallback={<p>Upgrade to Pro to use AI flashcard generation.</p>}
+    >
+      <p>AI tools are available.</p>
+    </Show>
+  );
+}
+```
+
+Reference: [`<Show>`](https://clerk.com/docs/nextjs/reference/components/control/show.md).
+
+## Security
+
+**Enforcement belongs on the server.** Client-only `<Show>` improves UX; do not rely on hiding UI as authorization. For mutations and sensitive data, re-check entitlements in Server Actions or Route Handlers (and keep data isolation per `clerk-auth-data-isolation.mdc`).
