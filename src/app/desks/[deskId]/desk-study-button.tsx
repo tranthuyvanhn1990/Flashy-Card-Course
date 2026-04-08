@@ -7,6 +7,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 
 const studyControlClassName =
   "inline-flex h-8 items-center justify-center rounded-lg border border-border bg-background px-2.5 text-sm font-medium whitespace-nowrap transition-all hover:bg-muted hover:text-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none";
@@ -30,8 +31,15 @@ export function DeskStudyButton({
     <Tooltip>
       <TooltipTrigger
         delay={200}
-        className="inline-flex rounded-lg outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-        render={<span className="inline-flex" />}
+        render={(props) => (
+          <span
+            {...props}
+            className={cn(
+              "inline-flex rounded-lg outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+              props.className,
+            )}
+          />
+        )}
       >
         <span
           className={`${studyControlClassName} cursor-not-allowed opacity-50 hover:bg-background`}
