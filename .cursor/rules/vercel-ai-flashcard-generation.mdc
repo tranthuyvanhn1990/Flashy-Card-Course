@@ -1,0 +1,68 @@
+---
+description: Vercel AI structured output for flashcard generation
+alwaysApply: true
+---
+
+# Vercel AI flashcard generation
+
+Use the `ai` npm package (`generateText` + `Output.object`) with a Zod schema whenever implementing or updating AI flashcard generation.
+
+## Requirements
+
+- Use a schema that returns a `cards` array.
+- Every card must include `front` and `back` as non-empty strings.
+- Accept a requested card count and enforce it in both prompt and schema.
+- Prefer deterministic, parseable output by constraining schema shape instead of parsing free-form text.
+
+## Recommended pattern
+
+```typescript
+import { generateText, Output } from "ai";
+import { z } from "zod";
+
+const cardSchema = z.object({
+  front: z.string().min(1),
+  back: z.string().min(1),
+});
+
+const flashcardOutputSchema = z.object({
+  cards: z.array(cardSchema),
+});
+
+type FlashcardGenerationInput = {
+  topic: string;
+  cardCount: number;
+};
+
+export async function generateFlashcards({
+  topic,
+  cardCount,
+}: FlashcardGenerationInput) {
+  const safeCardCount = Math.max(1, Math.min(cardCount, 50));
+
+  const { output } = await generateText({
+    model: "openai/gpt-5-mini",
+    output: Output.object({
+      schema: flashcardOutputSchema.refine(
+        (value) => value.cards.length === safeCardCount,
+        `Must return exactly ${safeCardCount} cards`,
+      ),
+    }),
+    prompt: [
+      `Generate exactly ${safeCardCount} flashcards about "${topic}".`,
+      "Each flashcard must have:",
+      '- `front`: a concise question or prompt',
+      '- `back`: a clear, accurate answer',
+      "Return only the structured output that matches the schema.",
+    ].join("\n"),
+  });
+
+  return output.cards;
+}
+```
+
+## Avoid
+
+- Returning a different shape than `{ cards: [{ front, back }] }`.
+- Omitting card count constraints.
+- Parsing cards from plain text when structured output can enforce correctness.

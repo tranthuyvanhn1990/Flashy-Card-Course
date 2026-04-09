@@ -7,13 +7,16 @@ import { z } from "zod";
 
 import {
   addCardToDeckForClerkUser,
+  addCardsToDeckForClerkUser,
   deleteCardForClerkUser,
   updateCardForClerkUser,
 } from "@/db/queries/cards";
 import {
   deleteDeckForClerkUser,
+  getDeckByIdForClerkUserId,
   updateDeckForClerkUser,
 } from "@/db/queries/decks";
+import { generateFlashcards } from "@/lib/ai/generate-flashcards";
 
 const addCardSchema = z.object({
   deckId: z.string().uuid(),
@@ -196,5 +199,76 @@ export async function updateDeckFromFormAction(formData: FormData) {
   revalidatePath(`/desks/${parsed.deckId}`);
   revalidatePath("/dashboard");
   redirect(`/desks/${parsed.deckId}`);
+}
+
+const generateAiCardsSchema = z.object({
+  deckId: z.string().uuid(),
+});
+
+const GENERATED_CARD_COUNT = 20;
+
+type GenerateAiCardsInput = z.infer<typeof generateAiCardsSchema>;
+
+export async function generateAiCardsAction(input: GenerateAiCardsInput) {
+  const { userId, has } = await auth();
+  if (!userId) redirect("/sign-in");
+
+  const parsed = generateAiCardsSchema.parse(input);
+
+  const canGenerateAiCards =
+    has({ plan: "pro" }) || has({ feature: "ai_flashcard_generation" });
+  if (!canGenerateAiCards) {
+    return {
+      ok: false as const,
+      error:
+        "AI flashcard generation is a Pro feature. Upgrade to generate cards." as const,
+    };
+  }
+
+  const deck = await getDeckByIdForClerkUserId(userId, parsed.deckId);
+  if (!deck) {
+    return { ok: false as const, error: "Deck not found" as const };
+  }
+
+  const hasTitle = deck.title.trim().length > 0;
+  const hasDescription =
+    typeof deck.description === "string" && deck.description.trim().length > 0;
+  if (!hasTitle || !hasDescription) {
+    return {
+      ok: false as const,
+      errorCode: "MISSING_DECK_DETAILS" as const,
+      error:
+        "Please add both a title and description before generating AI cards." as const,
+    };
+  }
+  const deckDescription = deck.description as string;
+
+  try {
+    const generatedCards = await generateFlashcards({
+      title: deck.title,
+      description: deckDescription,
+      cardCount: GENERATED_CARD_COUNT,
+    });
+
+    const inserted = await addCardsToDeckForClerkUser({
+      clerkUserId: userId,
+      deckId: parsed.deckId,
+      cardPairs: generatedCards,
+    });
+
+    if (!inserted) {
+      return { ok: false as const, error: "Deck not found" as const };
+    }
+
+    revalidatePath(`/desks/${parsed.deckId}`);
+
+    return { ok: true as const };
+  } catch {
+    return {
+      ok: false as const,
+      errorCode: "GENERATION_FAILED" as const,
+      error: "Failed to generate cards. Please try again." as const,
+    };
+  }
 }
 

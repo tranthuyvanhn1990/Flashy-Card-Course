@@ -26,12 +26,15 @@ export const metadata: Metadata = {
 };
 
 export default async function DashboardPage() {
-  const { userId } = await auth();
+  const { userId, has } = await auth();
   if (!userId) {
     redirect("/sign-in");
   }
 
   const userDecks = await getDecksByClerkUserId(userId);
+  const hasFreeDeckLimit = has({ feature: "3_desk_limit" });
+  const hasReachedDeckLimit =
+    hasFreeDeckLimit && userDecks.length >= 3;
 
   return (
     <div className="flex flex-1 flex-col gap-8 bg-background px-4 py-8">
@@ -46,7 +49,16 @@ export default async function DashboardPage() {
             </p>
           </div>
 
-          <CreateDeskDialog />
+          {hasReachedDeckLimit ? (
+            <Link
+              href="/pricing"
+              className="inline-flex h-8 shrink-0 items-center justify-center rounded-lg bg-secondary px-2.5 text-sm font-medium text-secondary-foreground transition-all hover:bg-secondary/80 disabled:opacity-50"
+            >
+              Upgrade to create more decks
+            </Link>
+          ) : (
+            <CreateDeskDialog />
+          )}
         </div>
       </div>
 

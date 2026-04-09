@@ -30,6 +30,31 @@ export async function getCardsByDeckId(deckId: string): Promise<Card[]> {
     .orderBy(desc(cards.updatedAt), desc(cards.createdAt));
 }
 
+export async function getCardsByDeckIdForClerkUser(params: {
+  clerkUserId: string;
+  deckId: string;
+}): Promise<Card[]> {
+  return db
+    .select({
+      id: cards.id,
+      deckId: cards.deckId,
+      front: cards.front,
+      back: cards.back,
+      sortOrder: cards.sortOrder,
+      createdAt: cards.createdAt,
+      updatedAt: cards.updatedAt,
+    })
+    .from(cards)
+    .innerJoin(decks, eq(cards.deckId, decks.id))
+    .where(
+      and(
+        eq(cards.deckId, params.deckId),
+        eq(decks.clerkUserId, params.clerkUserId),
+      ),
+    )
+    .orderBy(desc(cards.updatedAt), desc(cards.createdAt));
+}
+
 export async function addCardToDeckForClerkUser(params: {
   clerkUserId: string;
   deckId: string;
@@ -61,6 +86,40 @@ export async function addCardToDeckForClerkUser(params: {
     .returning();
 
   return inserted ?? null;
+}
+
+export async function addCardsToDeckForClerkUser(params: {
+  clerkUserId: string;
+  deckId: string;
+  cardPairs: CardPair[];
+}): Promise<boolean> {
+  const deck = await getDeckByIdForClerkUserId(
+    params.clerkUserId,
+    params.deckId,
+  );
+  if (!deck) return false;
+
+  if (params.cardPairs.length === 0) return true;
+
+  const [{ nextSortOrder }] = await db
+    .select({
+      nextSortOrder: sql<number>`COALESCE(MAX(${cards.sortOrder}), -1) + 1`,
+    })
+    .from(cards)
+    .where(eq(cards.deckId, params.deckId));
+
+  const baseSortOrder = nextSortOrder ?? 0;
+
+  await db.insert(cards).values(
+    params.cardPairs.map((cardPair, index) => ({
+      deckId: params.deckId,
+      front: cardPair.front,
+      back: cardPair.back,
+      sortOrder: baseSortOrder + index,
+    })),
+  );
+
+  return true;
 }
 
 export async function updateCardForClerkUser(params: {

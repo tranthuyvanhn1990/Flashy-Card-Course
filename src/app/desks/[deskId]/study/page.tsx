@@ -3,7 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { notFound, redirect } from "next/navigation";
 import { z } from "zod";
 
-import { getCardsByDeckId } from "@/db/queries/cards";
+import { getCardsByDeckIdForClerkUser } from "@/db/queries/cards";
 import { getDeckByIdForClerkUserId } from "@/db/queries/decks";
 import { StudySession } from "./study-session";
 
@@ -24,7 +24,10 @@ export default async function DeskStudyPage({
   const deck = await getDeckByIdForClerkUserId(userId, parsedDeskId.data);
   if (!deck) notFound();
 
-  const cards = await getCardsByDeckId(deck.id);
+  const cards = await getCardsByDeckIdForClerkUser({
+    clerkUserId: userId,
+    deckId: deck.id,
+  });
   if (cards.length === 0) notFound();
 
   return (

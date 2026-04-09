@@ -5,7 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { z } from "zod";
 
 import { getDeckByIdForClerkUserId } from "@/db/queries/decks";
-import { getCardsByDeckId } from "@/db/queries/cards";
+import { getCardsByDeckIdForClerkUser } from "@/db/queries/cards";
 import { AddCardModal } from "./add-card-modal";
 import { EditCardModal } from "./edit-card-modal";
 import { DeleteCardModal } from "./delete-card-modal";
@@ -19,6 +19,7 @@ import {
 import { EditDeskModal } from "./edit-desk-modal";
 import { DeleteDeskModal } from "./delete-desk-modal";
 import { DeskStudyButton } from "./desk-study-button";
+import { GenerateAiCardsButton } from "./generate-ai-cards-button";
 
 const deskIdSchema = z.string().uuid();
 
@@ -39,7 +40,7 @@ export default async function DeskPage({
 }: {
   params: Promise<{ deskId: string }>;
 }) {
-  const { userId } = await auth();
+  const { userId, has } = await auth();
   if (!userId) redirect("/sign-in");
 
   const { deskId } = await params;
@@ -49,7 +50,16 @@ export default async function DeskPage({
   const deck = await getDeckByIdForClerkUserId(userId, parsedDeskId.data);
   if (!deck) notFound();
 
-  const deckCards = await getCardsByDeckId(deck.id);
+  const deckCards = await getCardsByDeckIdForClerkUser({
+    clerkUserId: userId,
+    deckId: deck.id,
+  });
+  const canGenerateAiCards =
+    has({ plan: "pro" }) || has({ feature: "ai_flashcard_generation" });
+  const hasRequiredDeckDetails =
+    deck.title.trim().length > 0 &&
+    typeof deck.description === "string" &&
+    deck.description.trim().length > 0;
   const updatedAtDisplay = formatDeckUpdatedAt(
     deck.updatedAt instanceof Date ? deck.updatedAt : new Date(deck.updatedAt),
   );
@@ -102,7 +112,14 @@ export default async function DeskPage({
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-xl font-semibold tracking-tight">Cards</h2>
-          {deckCards.length > 0 ? <AddCardModal deckId={deck.id} /> : null}
+          <div className="flex flex-wrap items-center gap-2">
+            <GenerateAiCardsButton
+              deckId={deck.id}
+              canGenerateAiCards={canGenerateAiCards}
+              hasRequiredDeckDetails={hasRequiredDeckDetails}
+            />
+            {deckCards.length > 0 ? <AddCardModal deckId={deck.id} /> : null}
+          </div>
         </div>
 
         {deckCards.length === 0 ? (
@@ -115,11 +132,20 @@ export default async function DeskPage({
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col items-center gap-4 pb-8 pt-2">
-                <AddCardModal
-                  deckId={deck.id}
-                  triggerLabel="Add your first card"
-                  triggerVariant="default"
-                />
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <GenerateAiCardsButton
+                    deckId={deck.id}
+                    canGenerateAiCards={canGenerateAiCards}
+                    hasRequiredDeckDetails={hasRequiredDeckDetails}
+                    triggerLabel="Generate cards with AI"
+                    triggerVariant="secondary"
+                  />
+                  <AddCardModal
+                    deckId={deck.id}
+                    triggerLabel="Add your first card"
+                    triggerVariant="default"
+                  />
+                </div>
               </CardContent>
             </Card>
           </div>
