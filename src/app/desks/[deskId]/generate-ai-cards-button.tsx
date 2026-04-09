@@ -88,7 +88,9 @@ export function GenerateAiCardsButton({
             return;
           }
 
-          toast.success("Generated 20 cards with AI");
+          toast.success(
+            `Generated ${result.cardCount} card${result.cardCount === 1 ? "" : "s"} with AI`,
+          );
           router.refresh();
         });
       }}

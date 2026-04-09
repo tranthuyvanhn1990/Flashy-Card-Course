@@ -1,5 +1,22 @@
+import { createOpenAI } from "@ai-sdk/openai";
 import { generateText, Output } from "ai";
 import { z } from "zod";
+
+/** Prefix for errors we surface to the client (safe, no secrets). */
+export const FLASHCARDS_CONFIG_ERROR_PREFIX = "[flashcards-config]";
+
+const OPENAI_FLASHCARD_MODEL = "gpt-4o-mini" as const;
+
+function getOpenAiLanguageModel() {
+  const apiKey = process.env.OPENAI_API_KEY?.trim();
+  if (!apiKey) {
+    throw new Error(
+      `${FLASHCARDS_CONFIG_ERROR_PREFIX} Set OPENAI_API_KEY in .env.local (OpenAI API key).`,
+    );
+  }
+  const openai = createOpenAI({ apiKey });
+  return openai(OPENAI_FLASHCARD_MODEL);
+}
 
 const generatedCardSchema = z.object({
   front: z.string().min(1),
@@ -21,20 +38,19 @@ export async function generateFlashcards({
 }: GenerateFlashcardsInput): Promise<GeneratedCard[]> {
   const safeCardCount = Math.max(1, Math.min(cardCount, 50));
 
+  // Do not require an exact array length in the schema: models often return
+  // N-1 / N+1 items with structured output, which hard-fails validation.
   const flashcardOutputSchema = z.object({
-    cards: z.array(generatedCardSchema).refine(
-      (value) => value.length === safeCardCount,
-      `Must return exactly ${safeCardCount} cards`,
-    ),
+    cards: z.array(generatedCardSchema).min(1).max(60),
   });
 
   const { output } = await generateText({
-    model: "openai/gpt-5-mini",
+    model: getOpenAiLanguageModel(),
     output: Output.object({
       schema: flashcardOutputSchema,
     }),
     prompt: [
-      `Generate exactly ${safeCardCount} study flashcards.`,
+      `Generate about ${safeCardCount} study flashcards (aim for ${safeCardCount}, a few more or fewer is acceptable).`,
       `Deck title: ${title}`,
       `Deck description: ${description}`,
       "Requirements:",
@@ -53,5 +69,5 @@ export async function generateFlashcards({
     ].join("\n"),
   });
 
-  return output.cards;
+  return output.cards.slice(0, safeCardCount);
 }

@@ -16,7 +16,10 @@ import {
   getDeckByIdForClerkUserId,
   updateDeckForClerkUser,
 } from "@/db/queries/decks";
-import { generateFlashcards } from "@/lib/ai/generate-flashcards";
+import {
+  FLASHCARDS_CONFIG_ERROR_PREFIX,
+  generateFlashcards,
+} from "@/lib/ai/generate-flashcards";
 
 const addCardSchema = z.object({
   deckId: z.string().uuid(),
@@ -262,8 +265,23 @@ export async function generateAiCardsAction(input: GenerateAiCardsInput) {
 
     revalidatePath(`/desks/${parsed.deckId}`);
 
-    return { ok: true as const };
-  } catch {
+    return { ok: true as const, cardCount: generatedCards.length };
+  } catch (err) {
+    console.error("generateAiCardsAction:", err);
+
+    if (
+      err instanceof Error &&
+      err.message.includes(FLASHCARDS_CONFIG_ERROR_PREFIX)
+    ) {
+      return {
+        ok: false as const,
+        errorCode: "OPENAI_CONFIG" as const,
+        error: err.message
+          .replace(FLASHCARDS_CONFIG_ERROR_PREFIX, "")
+          .trim(),
+      };
+    }
+
     return {
       ok: false as const,
       errorCode: "GENERATION_FAILED" as const,
